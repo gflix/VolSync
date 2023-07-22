@@ -21,6 +21,13 @@ int main(int argc, char const* argv[])
     try
     {
         commandLineArguments = CommandLineParser::parse(argc, argv);
+
+        if (commandLineArguments.showHelp)
+        {
+            CommandLineParser::usage(cerr, argv[0]);
+            return 0;
+        }
+
         if (commandLineArguments.targetVolume.empty())
         {
             if (commandLineArguments.positionalArguments.size() < 2)

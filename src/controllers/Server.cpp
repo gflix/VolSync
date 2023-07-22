@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <controllers/Server.hpp>
 #include <models/MessageHeader.hpp>
+#include <models/ResponseVersion.hpp>
 #include <utils/ByteArray.hpp>
 
 namespace VolSync
@@ -44,7 +45,8 @@ void Server::run(void)
         {
             throw std::runtime_error(
                 "unexpected number of message header bytes read "
-                "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ")");
+                "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ", " +
+                std::string(strerror(errno)) + ")");
         }
 
         if (messageHeader.payloadLength > receiveBufferMax)
@@ -64,7 +66,8 @@ void Server::run(void)
             {
                 throw std::runtime_error(
                     "unexpected number of payload bytes read "
-                    "(" + std::to_string(bytesRead) + " != " + std::to_string(messageHeader.payloadLength) + ")");
+                    "(" + std::to_string(bytesRead) + " != " + std::to_string(messageHeader.payloadLength) + ", " +
+                    std::string(strerror(errno)) + ")");
             }
 
             payload = ByteArray(buffer.get(), bytesRead);
@@ -78,7 +81,8 @@ void Server::run(void)
                 quitLoop = true;
                 break;
             case MessageType::REQUEST_VERSION:
-                throw std::runtime_error("client requested version - not yet implemented");
+                respondToClient(MessageType::RESPONSE_VERSION, ResponseVersion().toByteArray());
+                break;
             default:
                 throw std::runtime_error("unknown message type");
         }
@@ -106,7 +110,8 @@ void Server::respondToClient(MessageType response, const ByteArray& payload)
     {
         throw std::runtime_error(
             "unexpected number of message header bytes written "
-            "(" + std::to_string(bytesWritten) + " != " + std::to_string(sizeof(messageHeader)) + ")");
+            "(" + std::to_string(bytesWritten) + " != " + std::to_string(sizeof(messageHeader)) + ", " +
+            std::string(strerror(errno)) + ")");
     }
 
     bytesWritten = write(STDOUT_FILENO, payload.c_str(), payload.size());
@@ -114,7 +119,8 @@ void Server::respondToClient(MessageType response, const ByteArray& payload)
     {
         throw std::runtime_error(
             "unexpected number of payload bytes written "
-            "(" + std::to_string(bytesWritten) + " != " + std::to_string(payload.size()) + ")");
+            "(" + std::to_string(bytesWritten) + " != " + std::to_string(payload.size()) + ", " +
+            std::string(strerror(errno)) + ")");
     }
 }
 

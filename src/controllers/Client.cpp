@@ -9,6 +9,14 @@
 namespace VolSync
 {
 
+Client::Child::Child(
+    int readDescriptor,
+    int writeDescriptor):
+    readDescriptor(readDescriptor),
+    writeDescriptor(writeDescriptor)
+{
+}
+
 Client::Client(
     const std::string& source,
     const std::string& target,
@@ -45,25 +53,55 @@ Client::~Client()
 
 void Client::run(void)
 {
-    int toChild;
-    int fromChild;
-
-    startRemoteServer(
+    auto child = startRemoteServer(
         m_commandLineArguments.sshCommand,
         m_remoteHost,
         m_commandLineArguments.remotePathToExecutable,
-        m_targetVolume,
-        toChild,
-        fromChild);
+        m_targetVolume);
 
+    auto clientVersion = ResponseVersion();
+    auto serverVersion = getServerVersion(child);
+
+    if (std::string(serverVersion.packageName) != std::string(clientVersion.packageName) ||
+        serverVersion.protocolVersion != clientVersion.protocolVersion)
+    {
+        std::cerr << "ERROR: Detected version mismatch!" << std::endl;
+        std::cerr << "Client: " << clientVersion << std::endl;
+        std::cerr << "Server: " << serverVersion << std::endl;
+        requestAbort(child);
+
+        throw std::runtime_error("version mismatch detected");
+    }
+    else
+    {
+        std::cout << "Detected version: " << serverVersion << std::endl;
+    }
+
+    requestAbort(child);
+}
+
+ResponseVersion Client::getServerVersion(const Child& child)
+{
     ByteArray responsePayload;
-    communicateWithServer(toChild, fromChild, MessageType::REQUEST_ABORT, ByteArray(), MessageType::RESPONSE_ABORT, responsePayload);
-    // communicateWithServer(toChild, fromChild, MessageType::REQUEST_VERSION, ByteArray(), MessageType::RESPONSE_VERSION, responsePayload);
+    communicateWithServer(
+        child,
+        MessageType::REQUEST_VERSION, ByteArray(),
+        MessageType::RESPONSE_VERSION, responsePayload);
+
+    return ResponseVersion::fromByteArray(responsePayload);
+}
+
+void Client::requestAbort(const Child& child)
+{
+    ByteArray responsePayload;
+    communicateWithServer(
+        child,
+        MessageType::REQUEST_ABORT, ByteArray(),
+        MessageType::RESPONSE_ABORT, responsePayload);
 }
 
 void Client::communicateWithServer(
-    int descriptorToChild,
-    int descriptorFromChild,
+    const Child& child,
     MessageType request,
     const ByteArray& requestPayload,
     MessageType expectedResponse,
@@ -71,36 +109,38 @@ void Client::communicateWithServer(
 {
     auto messageHeader = MessageHeader(request, requestPayload.size());
 
-    auto bytesWritten = write(descriptorToChild, &messageHeader, sizeof(messageHeader));
+    auto bytesWritten = write(child.writeDescriptor, &messageHeader, sizeof(messageHeader));
     if (bytesWritten != (ssize_t) sizeof(messageHeader))
     {
         throw std::runtime_error(
             "unexpected number of message header bytes written "
-            "(" + std::to_string(bytesWritten) + " != " + std::to_string(sizeof(messageHeader)) + ")");
+            "(" + std::to_string(bytesWritten) + " != " + std::to_string(sizeof(messageHeader)) + ", " +
+            std::string(strerror(errno)) + ")");
     }
 
-    bytesWritten = write(descriptorToChild, requestPayload.c_str(), requestPayload.size());
+    bytesWritten = write(child.writeDescriptor, requestPayload.c_str(), requestPayload.size());
     if (bytesWritten != (ssize_t) requestPayload.size())
     {
         throw std::runtime_error(
             "unexpected number of payload bytes written "
-            "(" + std::to_string(bytesWritten) + " != " + std::to_string(requestPayload.size()) + ")");
+            "(" + std::to_string(bytesWritten) + " != " + std::to_string(requestPayload.size()) + ", " +
+            std::string(strerror(errno)) + ")");
     }
 
     fd_set descriptors;
     FD_ZERO(&descriptors);
-    FD_SET(descriptorFromChild, &descriptors);
+    FD_SET(child.readDescriptor, &descriptors);
     timeval timeout { readTimeoutSecondsDefault, 0 };
 
-    auto selectResult = select(descriptorFromChild + 1, &descriptors, nullptr, nullptr, &timeout);
+    auto selectResult = select(child.readDescriptor + 1, &descriptors, nullptr, nullptr, &timeout);
     if (selectResult > 0)
     {
-        if (!FD_ISSET(descriptorFromChild, &descriptors))
+        if (!FD_ISSET(child.readDescriptor, &descriptors))
         {
             throw std::runtime_error("unexpected result from select()");
         }
 
-        auto bytesRead = read(descriptorFromChild, &messageHeader, sizeof(messageHeader));
+        auto bytesRead = read(child.readDescriptor, &messageHeader, sizeof(messageHeader));
         if (bytesRead <= 0)
         {
             throw std::runtime_error("server closed connected unexpectedly");
@@ -109,27 +149,30 @@ void Client::communicateWithServer(
         {
             throw std::runtime_error(
                 "unexpected number of message header bytes read "
-                "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ")");
+                "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ", " +
+                std::string(strerror(errno)) + ")");
         }
 
         if (messageHeader.payloadLength > receiveBufferMax)
         {
             throw std::runtime_error(
                 "actual payload length exceeds the allowed receive buffer "
-                "(" + std::to_string(messageHeader.payloadLength) + " > " + std::to_string(receiveBufferMax) + ")");
+                "(" + std::to_string(messageHeader.payloadLength) + " > " + std::to_string(receiveBufferMax) + ", " +
+                std::string(strerror(errno)) + ")");
         }
 
         responsePayload.clear();
         if (messageHeader.payloadLength > 0)
         {
             auto buffer = std::make_unique<uint8_t>((int) messageHeader.payloadLength);
-            bytesRead = read(descriptorFromChild, buffer.get(), messageHeader.payloadLength);
+            bytesRead = read(child.readDescriptor, buffer.get(), messageHeader.payloadLength);
 
             if (bytesRead <= 0 || bytesRead != (ssize_t) messageHeader.payloadLength)
             {
                 throw std::runtime_error(
                     "unexpected number of payload bytes read "
-                    "(" + std::to_string(bytesRead) + " != " + std::to_string(messageHeader.payloadLength) + ")");
+                    "(" + std::to_string(bytesRead) + " != " + std::to_string(messageHeader.payloadLength) + ", " +
+                    std::string(strerror(errno)) + ")");
             }
 
             responsePayload = ByteArray(buffer.get(), bytesRead);
@@ -153,13 +196,11 @@ void Client::communicateWithServer(
     }
 }
 
-void Client::startRemoteServer(
+Client::Child Client::startRemoteServer(
     const std::string& sshCommand,
     const std::string& remoteHost,
     const std::string& remotePathToExecutable,
-    const std::string& targetVolume,
-    int& descriptorToChild,
-    int& descriptorFromChild)
+    const std::string& targetVolume)
 {
     if (sshCommand.empty())
     {
@@ -183,13 +224,10 @@ void Client::startRemoteServer(
 
     std::cout << "arguments=" << arguments << std::endl;
 
-    startRemoteServer(arguments, descriptorToChild, descriptorFromChild);
+    return startRemoteServer(arguments);
 }
 
-void Client::startRemoteServer(
-    const ProcessArguments& arguments,
-    int& descriptorToChild,
-    int& descriptorFromChild)
+Client::Child Client::startRemoteServer(const ProcessArguments& arguments)
 {
     int toChildPipe[2];
     int fromChildPipe[2];
@@ -243,8 +281,7 @@ void Client::startRemoteServer(
     close(toChildPipe[0]);
     close(fromChildPipe[1]);
 
-    descriptorToChild = toChildPipe[1];
-    descriptorFromChild = fromChildPipe[0];
+    return Child(fromChildPipe[0], toChildPipe[1]);
 }
 
 Client::ProcessArguments Client::splitCommand(const std::string& command)

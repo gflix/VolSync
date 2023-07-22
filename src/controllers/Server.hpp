@@ -16,7 +16,7 @@ public:
     void run(void);
 
     static constexpr time_t readTimeoutSecondsDefault = 10;
-    static constexpr time_t receiveBufferMax = 16;
+    static constexpr time_t receiveBufferMax = 48;
 
 protected:
 

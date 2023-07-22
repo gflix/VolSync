@@ -16,6 +16,7 @@ set(
     src/models/CommandLineArguments.cpp
     src/models/MessageHeader.cpp
     src/models/MessageType.cpp
+    src/models/ResponseVersion.cpp
 )
 
 add_executable(

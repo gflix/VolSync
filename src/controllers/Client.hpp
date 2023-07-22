@@ -3,6 +3,8 @@
 
 #include <ostream>
 #include <models/CommandLineArguments.hpp>
+#include <models/MessageType.hpp>
+#include <utils/ByteArray.hpp>
 
 namespace VolSync
 {
@@ -21,12 +23,22 @@ public:
     void run(void);
 
     static constexpr const char* remoteCommandDefault = "vol-sync";
+    static constexpr time_t readTimeoutSecondsDefault = 10;
+    static constexpr time_t receiveBufferMax = 16;
 
 protected:
     const std::string& m_sourceVolume;
     std::string m_remoteHost;
     std::string m_targetVolume;
     const CommandLineArguments& m_commandLineArguments;
+
+    void communicateWithServer(
+        int descriptorToChild,
+        int descriptorFromChild,
+        MessageType request,
+        const ByteArray& requestPayload,
+        MessageType expectedResponse,
+        ByteArray& responsePayload);
 
     static void startRemoteServer(
         const std::string& sshCommand,

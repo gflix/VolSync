@@ -1,6 +1,9 @@
 #ifndef CONTROLLERS_SERVER_HPP_
 #define CONTROLLERS_SERVER_HPP_
 
+#include <models/MessageType.hpp>
+#include <utils/ByteArray.hpp>
+
 namespace VolSync
 {
 
@@ -12,7 +15,12 @@ public:
 
     void run(void);
 
+    static constexpr time_t readTimeoutSecondsDefault = 10;
+    static constexpr time_t receiveBufferMax = 16;
+
 protected:
+
+    void respondToClient(MessageType response, const ByteArray& payload = ByteArray());
 
 private:
 

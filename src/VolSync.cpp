@@ -10,8 +10,6 @@
 using namespace std;
 using namespace VolSync;
 
-
-
 int main(int argc, char const* argv[])
 {
     CommandLineArguments commandLineArguments;
@@ -50,6 +48,7 @@ int main(int argc, char const* argv[])
         {
             Client client { source, target, commandLineArguments };
             client.run();
+            cerr << "CLIENT: Exiting gracefully" << endl;
         }
         catch(const std::exception& e)
         {
@@ -63,6 +62,7 @@ int main(int argc, char const* argv[])
         {
             Server server;
             server.run();
+            cerr << "SERVER: Exiting gracefully" << endl;
         }
         catch(const std::exception& e)
         {

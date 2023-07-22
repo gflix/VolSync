@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <controllers/Client.hpp>
+#include <models/MessageHeader.hpp>
 
 namespace VolSync
 {
@@ -55,7 +56,101 @@ void Client::run(void)
         toChild,
         fromChild);
 
-    throw std::runtime_error("not yet implemented [" + m_remoteHost + "][" + m_targetVolume + "]");
+    ByteArray responsePayload;
+    communicateWithServer(toChild, fromChild, MessageType::REQUEST_ABORT, ByteArray(), MessageType::RESPONSE_ABORT, responsePayload);
+    // communicateWithServer(toChild, fromChild, MessageType::REQUEST_VERSION, ByteArray(), MessageType::RESPONSE_VERSION, responsePayload);
+}
+
+void Client::communicateWithServer(
+    int descriptorToChild,
+    int descriptorFromChild,
+    MessageType request,
+    const ByteArray& requestPayload,
+    MessageType expectedResponse,
+    ByteArray& responsePayload)
+{
+    auto messageHeader = MessageHeader(request, requestPayload.size());
+
+    auto bytesWritten = write(descriptorToChild, &messageHeader, sizeof(messageHeader));
+    if (bytesWritten != (ssize_t) sizeof(messageHeader))
+    {
+        throw std::runtime_error(
+            "unexpected number of message header bytes written "
+            "(" + std::to_string(bytesWritten) + " != " + std::to_string(sizeof(messageHeader)) + ")");
+    }
+
+    bytesWritten = write(descriptorToChild, requestPayload.c_str(), requestPayload.size());
+    if (bytesWritten != (ssize_t) requestPayload.size())
+    {
+        throw std::runtime_error(
+            "unexpected number of payload bytes written "
+            "(" + std::to_string(bytesWritten) + " != " + std::to_string(requestPayload.size()) + ")");
+    }
+
+    fd_set descriptors;
+    FD_ZERO(&descriptors);
+    FD_SET(descriptorFromChild, &descriptors);
+    timeval timeout { readTimeoutSecondsDefault, 0 };
+
+    auto selectResult = select(descriptorFromChild + 1, &descriptors, nullptr, nullptr, &timeout);
+    if (selectResult > 0)
+    {
+        if (!FD_ISSET(descriptorFromChild, &descriptors))
+        {
+            throw std::runtime_error("unexpected result from select()");
+        }
+
+        auto bytesRead = read(descriptorFromChild, &messageHeader, sizeof(messageHeader));
+        if (bytesRead <= 0)
+        {
+            throw std::runtime_error("server closed connected unexpectedly");
+        }
+        if (bytesRead != (ssize_t) sizeof(messageHeader))
+        {
+            throw std::runtime_error(
+                "unexpected number of message header bytes read "
+                "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ")");
+        }
+
+        if (messageHeader.payloadLength > receiveBufferMax)
+        {
+            throw std::runtime_error(
+                "actual payload length exceeds the allowed receive buffer "
+                "(" + std::to_string(messageHeader.payloadLength) + " > " + std::to_string(receiveBufferMax) + ")");
+        }
+
+        responsePayload.clear();
+        if (messageHeader.payloadLength > 0)
+        {
+            auto buffer = std::make_unique<uint8_t>((int) messageHeader.payloadLength);
+            bytesRead = read(descriptorFromChild, buffer.get(), messageHeader.payloadLength);
+
+            if (bytesRead <= 0 || bytesRead != (ssize_t) messageHeader.payloadLength)
+            {
+                throw std::runtime_error(
+                    "unexpected number of payload bytes read "
+                    "(" + std::to_string(bytesRead) + " != " + std::to_string(messageHeader.payloadLength) + ")");
+            }
+
+            responsePayload = ByteArray(buffer.get(), bytesRead);
+        }
+
+        if (messageHeader.messageType != static_cast<uint32_t>(expectedResponse))
+        {
+            throw std::runtime_error(
+                "unexpected response type received "
+                "(" + std::to_string(messageHeader.messageType) + " != " +
+                std::to_string(static_cast<uint32_t>(expectedResponse)) + ")");
+        }
+    }
+    else if (selectResult == 0)
+    {
+        throw std::runtime_error("select() timed out");
+    }
+    else if (selectResult < 0)
+    {
+        throw std::runtime_error("select() returned an error (" + std::string(strerror(errno)) + ")");
+    }
 }
 
 void Client::startRemoteServer(
@@ -86,7 +181,7 @@ void Client::startRemoteServer(
     arguments.push_back("-s");
     arguments.push_back(targetVolume);
 
-    std::cout << arguments << std::endl;
+    std::cout << "arguments=" << arguments << std::endl;
 
     startRemoteServer(arguments, descriptorToChild, descriptorFromChild);
 }

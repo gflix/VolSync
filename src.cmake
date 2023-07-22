@@ -14,6 +14,8 @@ set(
     src/controllers/CommandLineParser.cpp
     src/controllers/Server.cpp
     src/models/CommandLineArguments.cpp
+    src/models/MessageHeader.cpp
+    src/models/MessageType.cpp
 )
 
 add_executable(

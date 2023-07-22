@@ -4,10 +4,12 @@ namespace VolSync
 {
 
 CommandLineArguments::CommandLineArguments(
-    bool isServer,
-    const std::string& remotePathToExecutable):
-    isServer(isServer),
-    remotePathToExecutable(remotePathToExecutable)
+    const std::string& targetVolume,
+    const std::string& remotePathToExecutable,
+    const PositionalArguments& positionalArguments):
+    targetVolume(targetVolume),
+    remotePathToExecutable(remotePathToExecutable),
+    positionalArguments(positionalArguments)
 {
 }
 

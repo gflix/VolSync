@@ -2,19 +2,24 @@
 #define MODELS_COMMANDLINEARGUMENTS_HPP_
 
 #include <string>
+#include <vector>
 
 namespace VolSync
 {
 
 struct CommandLineArguments
 {
+    typedef std::vector<std::string> PositionalArguments;
+
     explicit CommandLineArguments(
-        bool isServer = false,
-        const std::string& remotePathToExecutable = std::string());
+        const std::string& targetVolume = std::string(),
+        const std::string& remotePathToExecutable = std::string(),
+        const PositionalArguments& positionalArguments = PositionalArguments());
     virtual ~CommandLineArguments();
 
-    bool isServer;
+    std::string targetVolume;
     std::string remotePathToExecutable;
+    PositionalArguments positionalArguments;
 };
 
 } /* namespace VolSync */

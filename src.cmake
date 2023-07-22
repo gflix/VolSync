@@ -16,7 +16,11 @@ set(
     src/models/CommandLineArguments.cpp
     src/models/MessageHeader.cpp
     src/models/MessageType.cpp
+    src/models/RequestSetChunkSize.cpp
     src/models/ResponseVersion.cpp
+    src/models/ResponseVolumeInformation.cpp
+    src/utils/ByteArray.cpp
+    src/utils/Volume.cpp
 )
 
 add_executable(

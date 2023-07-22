@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <controllers/Client.hpp>
 #include <models/MessageHeader.hpp>
+#include <models/RequestSetChunkSize.hpp>
+#include <utils/Volume.hpp>
 
 namespace VolSync
 {
@@ -77,6 +79,21 @@ void Client::run(void)
         std::cout << "Detected version: " << serverVersion << std::endl;
     }
 
+    auto sourceVolumeInformation = Volume::getInformation(m_sourceVolume);
+    auto targetVolumeInformation = getTargetVolumeInformation(child);
+
+    if (targetVolumeInformation.size < sourceVolumeInformation.size)
+    {
+        throw std::runtime_error(
+            "target volume is smaller than the source (" +
+                std::to_string(targetVolumeInformation.size) + " < " +
+                std::to_string(sourceVolumeInformation.size) + ")");
+    }
+
+    auto chunkSize = determineBestChunkSize(sourceVolumeInformation.size);
+    std::cout << "Best chunk size: " << chunkSize << std::endl;
+    setChunkSize(child, chunkSize);
+
     requestAbort(child);
 }
 
@@ -89,6 +106,26 @@ ResponseVersion Client::getServerVersion(const Child& child)
         MessageType::RESPONSE_VERSION, responsePayload);
 
     return ResponseVersion::fromByteArray(responsePayload);
+}
+
+ResponseVolumeInformation Client::getTargetVolumeInformation(const Child& child)
+{
+    ByteArray responsePayload;
+    communicateWithServer(
+        child,
+        MessageType::REQUEST_VOLUME_INFORMATION, ByteArray(),
+        MessageType::RESPONSE_VOLUME_INFORMATION, responsePayload);
+
+    return ResponseVolumeInformation::fromByteArray(responsePayload);
+}
+
+void Client::setChunkSize(const Child& child, uint64_t chunkSize)
+{
+    ByteArray responsePayload;
+    communicateWithServer(
+        child,
+        MessageType::REQUEST_SET_CHUNK_SIZE, RequestSetChunkSize(chunkSize).toByteArray(),
+        MessageType::RESPONSE_SET_CHUNK_SIZE, responsePayload);
 }
 
 void Client::requestAbort(const Child& child)
@@ -301,6 +338,23 @@ Client::ProcessArguments Client::splitCommand(const std::string& command)
     }
 
     return arguments;
+}
+
+uint64_t Client::determineBestChunkSize(uint64_t volumeSize)
+{
+    if ((volumeSize & (chunkSizeMin - 1)) != 0)
+    {
+        throw std::runtime_error(
+            "volume size is not a multiple of the minimum chunk size (" + std::to_string(chunkSizeMin) + ")");
+    }
+
+    auto chunkSize = chunkSizeMin;
+    while ((volumeSize & ((chunkSize << 1UL) - 1)) == 0 && ((chunkSize << 1UL) <= chunkSizeMax))
+    {
+        chunkSize <<= 1UL;
+    }
+
+    return chunkSize;
 }
 
 std::ostream& operator<<(std::ostream& stream, const Client::ProcessArguments& arguments)

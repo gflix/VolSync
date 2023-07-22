@@ -10,15 +10,18 @@ namespace VolSync
 class Server
 {
 public:
-    Server();
+    Server(
+        const std::string& targetVolume);
     virtual ~Server();
 
     void run(void);
 
     static constexpr time_t readTimeoutSecondsDefault = 10;
-    static constexpr time_t receiveBufferMax = 48;
+    static constexpr size_t receiveBufferMax = 48;
 
 protected:
+    const std::string& m_targetVolume;
+    uint64_t m_chunkSize;
 
     void respondToClient(MessageType response, const ByteArray& payload = ByteArray());
 

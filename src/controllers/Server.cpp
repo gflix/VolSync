@@ -5,13 +5,17 @@
 #include <stdexcept>
 #include <controllers/Server.hpp>
 #include <models/MessageHeader.hpp>
+#include <models/RequestSetChunkSize.hpp>
 #include <models/ResponseVersion.hpp>
 #include <utils/ByteArray.hpp>
+#include <utils/Volume.hpp>
 
 namespace VolSync
 {
 
-Server::Server()
+Server::Server(
+    const std::string& targetVolume):
+    m_targetVolume(targetVolume)
 {
 }
 
@@ -82,6 +86,15 @@ void Server::run(void)
                 break;
             case MessageType::REQUEST_VERSION:
                 respondToClient(MessageType::RESPONSE_VERSION, ResponseVersion().toByteArray());
+                break;
+            case MessageType::REQUEST_VOLUME_INFORMATION:
+                respondToClient(
+                    MessageType::RESPONSE_VOLUME_INFORMATION,
+                    Volume::getInformation(m_targetVolume).toByteArray());
+                break;
+            case MessageType::REQUEST_SET_CHUNK_SIZE:
+                m_chunkSize = RequestSetChunkSize::fromByteArray(payload).size;
+                respondToClient(MessageType::RESPONSE_SET_CHUNK_SIZE);
                 break;
             default:
                 throw std::runtime_error("unknown message type");

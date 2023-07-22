@@ -60,7 +60,7 @@ int main(int argc, char const* argv[])
     {
         try
         {
-            Server server;
+            Server server { commandLineArguments.targetVolume };
             server.run();
             cerr << "SERVER: Exiting gracefully" << endl;
         }

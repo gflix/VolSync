@@ -3,12 +3,6 @@
 namespace VolSync
 {
 
-ByteArray::ByteArray()
-{
-}
-
-ByteArray::~ByteArray()
-{
-}
+// no implementation needed
 
 } /* namespace VolSync */

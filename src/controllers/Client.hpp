@@ -5,6 +5,7 @@
 #include <models/CommandLineArguments.hpp>
 #include <models/MessageType.hpp>
 #include <models/ResponseVersion.hpp>
+#include <models/ResponseVolumeInformation.hpp>
 #include <utils/ByteArray.hpp>
 
 namespace VolSync
@@ -35,7 +36,9 @@ public:
 
     static constexpr const char* remoteCommandDefault = "vol-sync";
     static constexpr time_t readTimeoutSecondsDefault = 10;
-    static constexpr time_t receiveBufferMax = 48;
+    static constexpr size_t receiveBufferMax = 48;
+    static constexpr uint64_t chunkSizeMin = 512;
+    static constexpr uint64_t chunkSizeMax = 128*1024;
 
 protected:
     const std::string& m_sourceVolume;
@@ -44,6 +47,8 @@ protected:
     const CommandLineArguments& m_commandLineArguments;
 
     static ResponseVersion getServerVersion(const Child& child);
+    static ResponseVolumeInformation getTargetVolumeInformation(const Child& child);
+    static void setChunkSize(const Child& child, uint64_t chunkSize);
     static void requestAbort(const Child& child);
 
     static void communicateWithServer(
@@ -62,6 +67,7 @@ protected:
         const ProcessArguments& arguments);
 
     static ProcessArguments splitCommand(const std::string& command);
+    static uint64_t determineBestChunkSize(uint64_t volumeSize);
 
 private:
 

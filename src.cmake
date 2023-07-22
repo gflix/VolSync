@@ -5,7 +5,9 @@ include_directories(
 
 set(
     LIBRARY_SOURCE_FILES
+    src/controllers/Client.cpp
     src/controllers/CommandLineParser.cpp
+    src/controllers/Server.cpp
     src/models/CommandLineArguments.cpp
 )
 

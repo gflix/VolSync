@@ -4,20 +4,14 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <controllers/Client.hpp>
 #include <controllers/CommandLineParser.hpp>
+#include <controllers/Server.hpp>
 
 using namespace std;
 using namespace VolSync;
 
-void runInClientMode(void)
-{
-    throw runtime_error("not yet implemented");
-}
 
-void runInSeverMode(void)
-{
-    throw runtime_error("not yet implemented");
-}
 
 int main(int argc, char const* argv[])
 {
@@ -48,7 +42,8 @@ int main(int argc, char const* argv[])
     {
         try
         {
-            runInClientMode();
+            Client client { source, target, commandLineArguments };
+            client.run();
         }
         catch(const std::exception& e)
         {
@@ -60,7 +55,8 @@ int main(int argc, char const* argv[])
     {
         try
         {
-            runInSeverMode();
+            Server server;
+            server.run();
         }
         catch(const std::exception& e)
         {

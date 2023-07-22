@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-# set project name
-project(vol-sync LANGUAGES CXX)
+# set project name and version
+file(STRINGS ".version" VERSION_FILE)
+project(vol-sync VERSION ${VERSION_FILE} LANGUAGES CXX)
 
 # require compiler features
 set(CMAKE_CXX_STANDARD 17)

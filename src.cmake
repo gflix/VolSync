@@ -3,6 +3,11 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src
 )
 
+add_compile_options(
+    -DPACKAGE_NAME="${CMAKE_PROJECT_NAME}"
+    -DPACKAGE_VERSION="${PROJECT_VERSION}"
+)
+
 set(
     LIBRARY_SOURCE_FILES
     src/controllers/Client.cpp

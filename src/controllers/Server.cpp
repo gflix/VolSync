@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <controllers/Server.hpp>
 #include <models/MessageHeader.hpp>
+#include <models/RequestSetChunkIndex.hpp>
 #include <models/RequestSetChunkSize.hpp>
 #include <models/ResponseVersion.hpp>
 #include <utils/ByteArray.hpp>
@@ -15,7 +16,9 @@ namespace VolSync
 
 Server::Server(
     const std::string& targetVolume):
-    m_targetVolume(targetVolume)
+    m_targetVolume(targetVolume),
+    m_chunkSize(0),
+    m_chunkIndex(0)
 {
 }
 
@@ -96,8 +99,12 @@ void Server::run(void)
                 m_chunkSize = RequestSetChunkSize::fromByteArray(payload).size;
                 respondToClient(MessageType::RESPONSE_SET_CHUNK_SIZE);
                 break;
+            case MessageType::REQUEST_SET_CHUNK_INDEX:
+                m_chunkIndex = RequestSetChunkIndex::fromByteArray(payload).chunkIndex;
+                respondToClient(MessageType::RESPONSE_SET_CHUNK_INDEX);
+                break;
             default:
-                throw std::runtime_error("unknown message type");
+                throw std::runtime_error("unknown message type (" + std::to_string(messageHeader.messageType) + ")");
         }
 
         timeout.tv_sec = readTimeoutSecondsDefault;

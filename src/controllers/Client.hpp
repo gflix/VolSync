@@ -49,6 +49,7 @@ protected:
     static ResponseVersion getServerVersion(const Child& child);
     static ResponseVolumeInformation getTargetVolumeInformation(const Child& child);
     static void setChunkSize(const Child& child, uint64_t chunkSize);
+    static void setChunkIndex(const Child& child, uint64_t chunkIndex);
     static void requestAbort(const Child& child);
 
     static void communicateWithServer(

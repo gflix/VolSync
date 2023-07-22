@@ -15,6 +15,8 @@ enum class MessageType
     RESPONSE_VOLUME_INFORMATION = 0x15,
     REQUEST_SET_CHUNK_SIZE = 0x16,
     RESPONSE_SET_CHUNK_SIZE = 0x17,
+    REQUEST_SET_CHUNK_INDEX = 0x18,
+    RESPONSE_SET_CHUNK_INDEX = 0x19,
 };
 
 } /* namespace VolSync */

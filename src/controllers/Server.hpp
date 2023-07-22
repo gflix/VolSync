@@ -22,6 +22,7 @@ public:
 protected:
     const std::string& m_targetVolume;
     uint64_t m_chunkSize;
+    uint64_t m_chunkIndex;
 
     void respondToClient(MessageType response, const ByteArray& payload = ByteArray());
 

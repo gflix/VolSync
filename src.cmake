@@ -14,8 +14,10 @@ set(
     src/controllers/CommandLineParser.cpp
     src/controllers/Server.cpp
     src/models/CommandLineArguments.cpp
+    src/models/GenericPayloadWithSize.cpp
     src/models/MessageHeader.cpp
     src/models/MessageType.cpp
+    src/models/RequestSetChunkIndex.cpp
     src/models/RequestSetChunkSize.cpp
     src/models/ResponseVersion.cpp
     src/models/ResponseVolumeInformation.cpp

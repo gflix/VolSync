@@ -94,6 +94,12 @@ void Client::run(void)
     std::cout << "Best chunk size: " << chunkSize << std::endl;
     setChunkSize(child, chunkSize);
 
+    auto chunkCount = sourceVolumeInformation.size / chunkSize;
+    for (uint64_t chunkIndex = 0; chunkIndex < chunkCount; ++chunkIndex)
+    {
+        setChunkIndex(child, chunkIndex);
+    }
+
     requestAbort(child);
 }
 
@@ -126,6 +132,15 @@ void Client::setChunkSize(const Child& child, uint64_t chunkSize)
         child,
         MessageType::REQUEST_SET_CHUNK_SIZE, RequestSetChunkSize(chunkSize).toByteArray(),
         MessageType::RESPONSE_SET_CHUNK_SIZE, responsePayload);
+}
+
+void Client::setChunkIndex(const Child& child, uint64_t chunkIndex)
+{
+    ByteArray responsePayload;
+    communicateWithServer(
+        child,
+        MessageType::REQUEST_SET_CHUNK_INDEX, RequestSetChunkSize(chunkIndex).toByteArray(),
+        MessageType::RESPONSE_SET_CHUNK_INDEX, responsePayload);
 }
 
 void Client::requestAbort(const Child& child)

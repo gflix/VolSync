@@ -8,11 +8,15 @@ CommandLineArguments::CommandLineArguments(
     const std::string& sshCommand,
     const std::string& targetVolume,
     const std::string& remotePathToExecutable,
+    bool verifyAfterWrite,
+    int statusInterval,
     const PositionalArguments& positionalArguments):
     showHelp(showHelp),
     sshCommand(sshCommand),
     targetVolume(targetVolume),
     remotePathToExecutable(remotePathToExecutable),
+    verifyAfterWrite(verifyAfterWrite),
+    statusInterval(statusInterval),
     positionalArguments(positionalArguments)
 {
 }

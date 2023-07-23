@@ -11,7 +11,7 @@ CommandLineArguments CommandLineParser::parse(int argc, char const* argv[])
 
     optind = 1;
     int getoptReturnValue;
-    while ((getoptReturnValue = getopt(argc, (char * const *) argv, "e:hs:r:")) != -1)
+    while ((getoptReturnValue = getopt(argc, (char * const *) argv, "e:hi:s:r:v")) != -1)
     {
         switch (getoptReturnValue)
         {
@@ -20,6 +20,13 @@ CommandLineArguments CommandLineParser::parse(int argc, char const* argv[])
                 break;
             case 'h':
                 arguments.showHelp = true;
+                break;
+            case 'i':
+                arguments.statusInterval = std::stoi(optarg);
+                if (arguments.statusInterval < 0)
+                {
+                    throw std::invalid_argument("negative value for the status interval is not allowed");
+                }
                 break;
             case 's':
                 arguments.targetVolume = optarg;
@@ -51,6 +58,9 @@ CommandLineArguments CommandLineParser::parse(int argc, char const* argv[])
                     }
                 }
                 break;
+            case 'v':
+                arguments.verifyAfterWrite = true;
+                break;
             default:
                 throw std::invalid_argument("invalid argument");
         }
@@ -77,10 +87,13 @@ void CommandLineParser::usage(std::ostream& stream, const std::string& programNa
     stream << "Optional arguments:" << std::endl;
     stream << "  -e COMMAND  SSH command (default: " << CommandLineArguments::sshCommandDefault << ")" << std::endl;
     stream << "  -h          Show this usage information" << std::endl;
+    stream << "  -i SECONDS  Print status every x seconds (default: " <<
+        CommandLineArguments::statusIntervalSecondsDefault << "; 0=off)" << std::endl;
     stream << "  -r PATH     Absolute path to the vol-sync executable on the remote machine" << std::endl;
     stream << "              (default: none to use the search path)" << std::endl;
     stream << "  -s TARGET   Run in server mode and use the given target volume (device)" << std::endl;
     stream << "              (internally used when connecting to a remote machine)" << std::endl;
+    stream << "  -v          Verify chunks after write (default: off)" << std::endl;
     stream << std::endl;
     stream << "Version information:" << std::endl;
     stream << "  " << PACKAGE_NAME << " " << PACKAGE_VERSION << std::endl;

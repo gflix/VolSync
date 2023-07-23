@@ -101,8 +101,11 @@ void Client::run(void)
     setChunkSize(child, m_chunkSize);
 
     auto chunkCount = sourceVolumeInformation.size / m_chunkSize;
+    uint64_t updatedChunks = 0;
     timespec referenceTime;
     clock_gettime(CLOCK_MONOTONIC_COARSE, &referenceTime);
+    auto startTime = referenceTime;
+
     for (m_chunkIndex = 0; m_chunkIndex < chunkCount; ++m_chunkIndex)
     {
         setChunkIndex(child, m_chunkIndex);
@@ -112,29 +115,48 @@ void Client::run(void)
         auto serverChunkHash = getChunkHash(child);
         if (clientChunkHash != serverChunkHash)
         {
-            // std::cout << "Chunk " << m_chunkIndex << "/" << chunkCount << " differ" << std::endl;
-
             seekToChunkIndex(m_chunkIndex);
             auto chunk = Chunk::read(m_volumeDescriptor, m_chunkSize);
             writeChunkToTarget(child, chunk);
 
-            seekToChunkIndex(m_chunkIndex);
-            clientChunkHash = Md5::calculateChunkHash(m_volumeDescriptor, m_chunkSize);
-            serverChunkHash = getChunkHash(child);
-            if (clientChunkHash != serverChunkHash)
+            if (m_commandLineArguments.verifyAfterWrite)
             {
-                throw std::runtime_error("chunk validation failed");
+                seekToChunkIndex(m_chunkIndex);
+                clientChunkHash = Md5::calculateChunkHash(m_volumeDescriptor, m_chunkSize);
+                serverChunkHash = getChunkHash(child);
+                if (clientChunkHash != serverChunkHash)
+                {
+                    throw std::runtime_error("chunk validation failed");
+                }
             }
+            ++updatedChunks;
         }
 
-        timespec now;
-        clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
-        if (now.tv_sec >= referenceTime.tv_sec + 10)
+        if (m_commandLineArguments.statusInterval > 0)
         {
-            char buffer[16];
-            snprintf(buffer, sizeof(buffer), "%.1f", m_chunkIndex * 100.0 / chunkCount);
-            std::cout << "Progress: " << buffer << "% (" << m_chunkIndex << "/" << chunkCount << ")" << std::endl;
-            referenceTime = now;
+            timespec now;
+            clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
+            if (now.tv_sec >= referenceTime.tv_sec + m_commandLineArguments.statusInterval)
+            {
+                char buffer[32];
+                auto runtime = now.tv_sec - startTime.tv_sec;
+
+                snprintf(
+                    buffer,
+                    sizeof(buffer),
+                    "%02d:%02d:%02d",
+                    (int) runtime / 3600,
+                    (int) ((runtime / 60) % 60),
+                    (int) runtime % 60);
+                std::cout << "[" << buffer << "] ";
+
+                snprintf(buffer, sizeof(buffer), "%.1f", m_chunkIndex * 100.0 / chunkCount);
+                std::cout <<
+                    "Progress: " << buffer << "% "
+                    "(" << m_chunkIndex << "/" << chunkCount << ", " << updatedChunks << " updated)" << std::endl;
+
+                referenceTime = now;
+            }
         }
     }
 

@@ -16,6 +16,8 @@ struct CommandLineArguments
         const std::string& sshCommand = sshCommandDefault,
         const std::string& targetVolume = std::string(),
         const std::string& remotePathToExecutable = std::string(),
+        bool verifyAfterWrite = false,
+        int statusInterval = statusIntervalSecondsDefault,
         const PositionalArguments& positionalArguments = PositionalArguments());
     virtual ~CommandLineArguments();
 
@@ -23,9 +25,12 @@ struct CommandLineArguments
     std::string sshCommand;
     std::string targetVolume;
     std::string remotePathToExecutable;
+    bool verifyAfterWrite;
+    int statusInterval;
     PositionalArguments positionalArguments;
 
     static constexpr const char* sshCommandDefault = "ssh";
+    static constexpr int statusIntervalSecondsDefault = 15;
 };
 
 } /* namespace VolSync */

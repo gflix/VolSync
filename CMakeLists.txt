@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # require external packages and programs
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
-pkg_check_modules(CRYPTO libcrypto>=3.0.0 REQUIRED IMPORTED_TARGET)
+pkg_check_modules(CRYPTO libcrypto>=1.1.1 REQUIRED IMPORTED_TARGET)
 
 # import directory names used on GNU systems
 include(GNUInstallDirs)

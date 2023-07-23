@@ -19,7 +19,7 @@ ResponseGetChunkHash Md5::calculateChunkHash(int descriptor, uint64_t chunkSize)
     {
         throw std::runtime_error("error during initialization of the message digest");
     }
-    if (!EVP_DigestInit_ex2(messageDigestContext, messageDigest, nullptr))
+    if (!EVP_DigestInit_ex(messageDigestContext, messageDigest, nullptr))
     {
         EVP_MD_CTX_free(messageDigestContext);
         throw std::runtime_error("error during initialization of the message digest");

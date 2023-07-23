@@ -38,7 +38,7 @@ public:
 
     static constexpr const char* remoteCommandDefault = "vol-sync";
     static constexpr uint64_t chunkSizeMin = 512;
-    static constexpr uint64_t chunkSizeMax = 256*1024;
+    static constexpr uint64_t chunkSizeMax = 1024*1024;
 
 protected:
     const std::string& m_sourceVolume;

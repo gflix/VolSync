@@ -13,7 +13,7 @@ public:
     virtual void run(void) = 0;
 
     static constexpr time_t readTimeoutSecondsDefault = 10;
-    static constexpr size_t receiveBufferMax = 256*1024;
+    static constexpr size_t receiveBufferMax = 1024*1024;
 
 protected:
     int m_volumeDescriptor;

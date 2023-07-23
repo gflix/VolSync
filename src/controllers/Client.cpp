@@ -101,6 +101,8 @@ void Client::run(void)
     setChunkSize(child, m_chunkSize);
 
     auto chunkCount = sourceVolumeInformation.size / m_chunkSize;
+    timespec referenceTime;
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &referenceTime);
     for (m_chunkIndex = 0; m_chunkIndex < chunkCount; ++m_chunkIndex)
     {
         setChunkIndex(child, m_chunkIndex);
@@ -110,7 +112,7 @@ void Client::run(void)
         auto serverChunkHash = getChunkHash(child);
         if (clientChunkHash != serverChunkHash)
         {
-            std::cout << "Chunk " << m_chunkIndex << " differ" << std::endl;
+            // std::cout << "Chunk " << m_chunkIndex << "/" << chunkCount << " differ" << std::endl;
 
             seekToChunkIndex(m_chunkIndex);
             auto chunk = Chunk::read(m_volumeDescriptor, m_chunkSize);
@@ -125,7 +127,15 @@ void Client::run(void)
             }
         }
 
-        // break;
+        timespec now;
+        clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
+        if (now.tv_sec >= referenceTime.tv_sec + 10)
+        {
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.1f", m_chunkIndex * 100.0 / chunkCount);
+            std::cout << "Progress: " << buffer << "% (" << m_chunkIndex << "/" << chunkCount << ")" << std::endl;
+            referenceTime = now;
+        }
     }
 
     closeVolume();

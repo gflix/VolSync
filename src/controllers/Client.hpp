@@ -2,8 +2,10 @@
 #define CONTROLLERS_CLIENT_HPP_
 
 #include <ostream>
+#include <controllers/GenericParty.hpp>
 #include <models/CommandLineArguments.hpp>
 #include <models/MessageType.hpp>
+#include <models/ResponseGetChunkHash.hpp>
 #include <models/ResponseVersion.hpp>
 #include <models/ResponseVolumeInformation.hpp>
 #include <utils/ByteArray.hpp>
@@ -11,7 +13,7 @@
 namespace VolSync
 {
 
-class Client
+class Client: public GenericParty
 {
 public:
     typedef std::vector<std::string> ProcessArguments;
@@ -32,13 +34,11 @@ public:
         const CommandLineArguments& commandLineArguments);
     virtual ~Client();
 
-    void run(void);
+    void run(void) override;
 
     static constexpr const char* remoteCommandDefault = "vol-sync";
-    static constexpr time_t readTimeoutSecondsDefault = 10;
-    static constexpr size_t receiveBufferMax = 48;
     static constexpr uint64_t chunkSizeMin = 512;
-    static constexpr uint64_t chunkSizeMax = 128*1024;
+    static constexpr uint64_t chunkSizeMax = 256*1024;
 
 protected:
     const std::string& m_sourceVolume;
@@ -46,12 +46,22 @@ protected:
     std::string m_targetVolume;
     const CommandLineArguments& m_commandLineArguments;
 
+    void openVolume(void) override;
+
     static ResponseVersion getServerVersion(const Child& child);
     static ResponseVolumeInformation getTargetVolumeInformation(const Child& child);
+    static void requestOpenVolume(const Child& child);
+    static void requestCloseVolume(const Child& child);
     static void setChunkSize(const Child& child, uint64_t chunkSize);
     static void setChunkIndex(const Child& child, uint64_t chunkIndex);
+    static ResponseGetChunkHash getChunkHash(const Child& child);
+    static void writeChunkToTarget(const Child& child, const ByteArray& chunk);
     static void requestAbort(const Child& child);
 
+    static void doSimpleRequest(
+        const Child& child,
+        MessageType request,
+        MessageType expectedResponse);
     static void communicateWithServer(
         const Child& child,
         MessageType request,

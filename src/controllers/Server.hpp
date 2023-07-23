@@ -1,30 +1,27 @@
 #ifndef CONTROLLERS_SERVER_HPP_
 #define CONTROLLERS_SERVER_HPP_
 
+#include <controllers/GenericParty.hpp>
 #include <models/MessageType.hpp>
 #include <utils/ByteArray.hpp>
 
 namespace VolSync
 {
 
-class Server
+class Server: public GenericParty
 {
 public:
     Server(
         const std::string& targetVolume);
     virtual ~Server();
 
-    void run(void);
-
-    static constexpr time_t readTimeoutSecondsDefault = 10;
-    static constexpr size_t receiveBufferMax = 48;
+    void run(void) override;
 
 protected:
     const std::string& m_targetVolume;
-    uint64_t m_chunkSize;
-    uint64_t m_chunkIndex;
 
     void respondToClient(MessageType response, const ByteArray& payload = ByteArray());
+    void openVolume(void) override;
 
 private:
 

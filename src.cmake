@@ -12,6 +12,7 @@ set(
     LIBRARY_SOURCE_FILES
     src/controllers/Client.cpp
     src/controllers/CommandLineParser.cpp
+    src/controllers/GenericParty.cpp
     src/controllers/Server.cpp
     src/models/CommandLineArguments.cpp
     src/models/GenericPayloadWithSize.cpp
@@ -19,9 +20,12 @@ set(
     src/models/MessageType.cpp
     src/models/RequestSetChunkIndex.cpp
     src/models/RequestSetChunkSize.cpp
+    src/models/ResponseGetChunkHash.cpp
     src/models/ResponseVersion.cpp
     src/models/ResponseVolumeInformation.cpp
     src/utils/ByteArray.cpp
+    src/utils/Chunk.cpp
+    src/utils/Md5.cpp
     src/utils/Volume.cpp
 )
 
@@ -45,6 +49,7 @@ target_compile_options(
 target_link_libraries(
     vol-sync
     vol-sync-internal
+    PkgConfig::CRYPTO
 )
 
 # install binaries to the target

@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
@@ -9,6 +10,8 @@
 #include <models/RequestSetChunkSize.hpp>
 #include <models/ResponseVersion.hpp>
 #include <utils/ByteArray.hpp>
+#include <utils/Chunk.hpp>
+#include <utils/Md5.hpp>
 #include <utils/Volume.hpp>
 
 namespace VolSync
@@ -16,9 +19,7 @@ namespace VolSync
 
 Server::Server(
     const std::string& targetVolume):
-    m_targetVolume(targetVolume),
-    m_chunkSize(0),
-    m_chunkIndex(0)
+    m_targetVolume(targetVolume)
 {
 }
 
@@ -66,18 +67,25 @@ void Server::run(void)
         ByteArray payload;
         if (messageHeader.payloadLength > 0)
         {
-            auto buffer = std::make_unique<uint8_t>((int) messageHeader.payloadLength);
-            bytesRead = read(STDIN_FILENO, buffer.get(), messageHeader.payloadLength);
+            uint8_t buffer[messageHeader.payloadLength];
+            auto payloadLength = messageHeader.payloadLength;
+            ssize_t totalBytesRead = 0;
 
-            if (bytesRead <= 0 || bytesRead != (ssize_t) messageHeader.payloadLength)
+            while (totalBytesRead < payloadLength &&
+                (bytesRead = read(STDIN_FILENO, buffer + totalBytesRead, payloadLength - totalBytesRead)) > 0)
+            {
+                totalBytesRead += bytesRead;
+            }
+
+            if (bytesRead <= 0 || totalBytesRead != payloadLength)
             {
                 throw std::runtime_error(
                     "unexpected number of payload bytes read "
-                    "(" + std::to_string(bytesRead) + " != " + std::to_string(messageHeader.payloadLength) + ", " +
+                    "(" + std::to_string(totalBytesRead) + " != " + std::to_string(payloadLength) + ", " +
                     std::string(strerror(errno)) + ")");
             }
 
-            payload = ByteArray(buffer.get(), bytesRead);
+            payload = ByteArray(buffer, totalBytesRead);
         }
 
         switch (static_cast<MessageType>(messageHeader.messageType))
@@ -95,6 +103,16 @@ void Server::run(void)
                     MessageType::RESPONSE_VOLUME_INFORMATION,
                     Volume::getInformation(m_targetVolume).toByteArray());
                 break;
+            case MessageType::REQUEST_OPEN_VOLUME:
+                openVolume();
+                respondToClient(
+                    MessageType::RESPONSE_OPEN_VOLUME);
+                break;
+            case MessageType::REQUEST_CLOSE_VOLUME:
+                closeVolume();
+                respondToClient(
+                    MessageType::RESPONSE_CLOSE_VOLUME);
+                break;
             case MessageType::REQUEST_SET_CHUNK_SIZE:
                 m_chunkSize = RequestSetChunkSize::fromByteArray(payload).size;
                 respondToClient(MessageType::RESPONSE_SET_CHUNK_SIZE);
@@ -102,6 +120,23 @@ void Server::run(void)
             case MessageType::REQUEST_SET_CHUNK_INDEX:
                 m_chunkIndex = RequestSetChunkIndex::fromByteArray(payload).chunkIndex;
                 respondToClient(MessageType::RESPONSE_SET_CHUNK_INDEX);
+                break;
+            case MessageType::REQUEST_GET_CHUNK_HASH:
+                seekToChunkIndex(m_chunkIndex);
+                respondToClient(
+                    MessageType::RESPONSE_GET_CHUNK_HASH,
+                    Md5::calculateChunkHash(m_volumeDescriptor, m_chunkSize).toByteArray());
+                break;
+            case MessageType::REQUEST_WRITE_CHUNK_TO_TARGET:
+                seekToChunkIndex(m_chunkIndex);
+                if (payload.size() != m_chunkSize)
+                {
+                    throw std::runtime_error(
+                        "unexpected size of chunk received "
+                        "(" + std::to_string(payload.size()) + " != " + std::to_string(m_chunkSize) + ")");
+                }
+                Chunk::write(m_volumeDescriptor, payload);
+                respondToClient(MessageType::RESPONSE_WRITE_CHUNK_TO_TARGET);
                 break;
             default:
                 throw std::runtime_error("unknown message type (" + std::to_string(messageHeader.messageType) + ")");
@@ -142,6 +177,20 @@ void Server::respondToClient(MessageType response, const ByteArray& payload)
             "(" + std::to_string(bytesWritten) + " != " + std::to_string(payload.size()) + ", " +
             std::string(strerror(errno)) + ")");
     }
+}
+
+void Server::openVolume(void)
+{
+    closeVolume();
+
+    auto descriptor = open(m_targetVolume.c_str(), O_RDWR);
+    if (descriptor < 0)
+    {
+        throw std::runtime_error(
+            "could not open volume \"" + m_targetVolume + "\" for writing (" + std::string(strerror(errno)) + ")");
+    }
+
+    m_volumeDescriptor = descriptor;
 }
 
 } /* namespace VolSync */

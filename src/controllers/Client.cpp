@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
@@ -6,6 +7,8 @@
 #include <controllers/Client.hpp>
 #include <models/MessageHeader.hpp>
 #include <models/RequestSetChunkSize.hpp>
+#include <utils/Chunk.hpp>
+#include <utils/Md5.hpp>
 #include <utils/Volume.hpp>
 
 namespace VolSync
@@ -90,17 +93,58 @@ void Client::run(void)
                 std::to_string(sourceVolumeInformation.size) + ")");
     }
 
-    auto chunkSize = determineBestChunkSize(sourceVolumeInformation.size);
-    std::cout << "Best chunk size: " << chunkSize << std::endl;
-    setChunkSize(child, chunkSize);
+    openVolume();
+    requestOpenVolume(child);
 
-    auto chunkCount = sourceVolumeInformation.size / chunkSize;
-    for (uint64_t chunkIndex = 0; chunkIndex < chunkCount; ++chunkIndex)
+    m_chunkSize = determineBestChunkSize(sourceVolumeInformation.size);
+    std::cout << "Best chunk size: " << m_chunkSize << std::endl;
+    setChunkSize(child, m_chunkSize);
+
+    auto chunkCount = sourceVolumeInformation.size / m_chunkSize;
+    for (m_chunkIndex = 0; m_chunkIndex < chunkCount; ++m_chunkIndex)
     {
-        setChunkIndex(child, chunkIndex);
+        setChunkIndex(child, m_chunkIndex);
+
+        seekToChunkIndex(m_chunkIndex);
+        auto clientChunkHash = Md5::calculateChunkHash(m_volumeDescriptor, m_chunkSize);
+        auto serverChunkHash = getChunkHash(child);
+        if (clientChunkHash != serverChunkHash)
+        {
+            std::cout << "Chunk " << m_chunkIndex << " differ" << std::endl;
+
+            seekToChunkIndex(m_chunkIndex);
+            auto chunk = Chunk::read(m_volumeDescriptor, m_chunkSize);
+            writeChunkToTarget(child, chunk);
+
+            seekToChunkIndex(m_chunkIndex);
+            clientChunkHash = Md5::calculateChunkHash(m_volumeDescriptor, m_chunkSize);
+            serverChunkHash = getChunkHash(child);
+            if (clientChunkHash != serverChunkHash)
+            {
+                throw std::runtime_error("chunk validation failed");
+            }
+        }
+
+        // break;
     }
 
+    closeVolume();
+    requestCloseVolume(child);
     requestAbort(child);
+}
+
+void Client::openVolume(void)
+{
+    closeVolume();
+
+    auto descriptor = open(m_sourceVolume.c_str(), O_RDONLY);
+    if (descriptor < 0)
+    {
+        throw std::runtime_error(
+            "could not open volume \"" + m_sourceVolume + "\" for reading (" + std::string(strerror(errno)) + ")");
+    }
+
+    m_volumeDescriptor = descriptor;
 }
 
 ResponseVersion Client::getServerVersion(const Child& child)
@@ -125,6 +169,16 @@ ResponseVolumeInformation Client::getTargetVolumeInformation(const Child& child)
     return ResponseVolumeInformation::fromByteArray(responsePayload);
 }
 
+void Client::requestOpenVolume(const Child& child)
+{
+    doSimpleRequest(child, MessageType::REQUEST_OPEN_VOLUME, MessageType::RESPONSE_OPEN_VOLUME);
+}
+
+void Client::requestCloseVolume(const Child& child)
+{
+    doSimpleRequest(child, MessageType::REQUEST_CLOSE_VOLUME, MessageType::RESPONSE_CLOSE_VOLUME);
+}
+
 void Client::setChunkSize(const Child& child, uint64_t chunkSize)
 {
     ByteArray responsePayload;
@@ -143,13 +197,38 @@ void Client::setChunkIndex(const Child& child, uint64_t chunkIndex)
         MessageType::RESPONSE_SET_CHUNK_INDEX, responsePayload);
 }
 
-void Client::requestAbort(const Child& child)
+ResponseGetChunkHash Client::getChunkHash(const Child& child)
 {
     ByteArray responsePayload;
     communicateWithServer(
         child,
-        MessageType::REQUEST_ABORT, ByteArray(),
-        MessageType::RESPONSE_ABORT, responsePayload);
+        MessageType::REQUEST_GET_CHUNK_HASH, ByteArray(),
+        MessageType::RESPONSE_GET_CHUNK_HASH, responsePayload);
+
+    return ResponseGetChunkHash::fromByteArray(responsePayload);
+}
+
+void Client::requestAbort(const Child& child)
+{
+    doSimpleRequest(child, MessageType::REQUEST_ABORT, MessageType::RESPONSE_ABORT);
+}
+
+void Client::writeChunkToTarget(const Child& child, const ByteArray& chunk)
+{
+    ByteArray responsePayload;
+    communicateWithServer(
+        child,
+        MessageType::REQUEST_WRITE_CHUNK_TO_TARGET, chunk,
+        MessageType::RESPONSE_WRITE_CHUNK_TO_TARGET, responsePayload);
+}
+
+void Client::doSimpleRequest(const Child& child, MessageType request, MessageType expectedResponse)
+{
+    ByteArray responsePayload;
+    communicateWithServer(
+        child,
+        request, ByteArray(),
+        expectedResponse, responsePayload);
 }
 
 void Client::communicateWithServer(
@@ -216,8 +295,8 @@ void Client::communicateWithServer(
         responsePayload.clear();
         if (messageHeader.payloadLength > 0)
         {
-            auto buffer = std::make_unique<uint8_t>((int) messageHeader.payloadLength);
-            bytesRead = read(child.readDescriptor, buffer.get(), messageHeader.payloadLength);
+            uint8_t buffer[messageHeader.payloadLength];
+            bytesRead = read(child.readDescriptor, buffer, messageHeader.payloadLength);
 
             if (bytesRead <= 0 || bytesRead != (ssize_t) messageHeader.payloadLength)
             {
@@ -227,7 +306,7 @@ void Client::communicateWithServer(
                     std::string(strerror(errno)) + ")");
             }
 
-            responsePayload = ByteArray(buffer.get(), bytesRead);
+            responsePayload = ByteArray(buffer, bytesRead);
         }
 
         if (messageHeader.messageType != static_cast<uint32_t>(expectedResponse))
@@ -274,7 +353,7 @@ Client::Child Client::startRemoteServer(
     arguments.push_back("-s");
     arguments.push_back(targetVolume);
 
-    std::cout << "arguments=" << arguments << std::endl;
+    // std::cout << "arguments=" << arguments << std::endl;
 
     return startRemoteServer(arguments);
 }

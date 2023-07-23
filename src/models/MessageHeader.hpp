@@ -2,6 +2,7 @@
 #define MODELS_MESSAGEHEADER_HPP_
 
 #include <cstdint>
+#include <ostream>
 #include <models/MessageType.hpp>
 
 namespace VolSync
@@ -17,6 +18,8 @@ struct __attribute__ ((packed)) MessageHeader
     uint32_t messageType;
     uint32_t payloadLength;
 };
+
+std::ostream& operator<<(std::ostream& stream, const MessageHeader& header);
 
 } /* namespace VolSync */
 

@@ -271,6 +271,7 @@ void Client::communicateWithServer(
     ByteArray& responsePayload)
 {
     auto messageHeader = MessageHeader(request, requestPayload.size());
+    // std::cout << "CLIENT TX >> " << messageHeader << std::endl;
 
     auto bytesWritten = write(child.writeDescriptor, &messageHeader, sizeof(messageHeader));
     if (bytesWritten != (ssize_t) sizeof(messageHeader))
@@ -315,6 +316,7 @@ void Client::communicateWithServer(
                 "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ", " +
                 std::string(strerror(errno)) + ")");
         }
+        // std::cout << "CLIENT RX << " << messageHeader << std::endl;
 
         if (messageHeader.payloadLength > receiveBufferMax)
         {

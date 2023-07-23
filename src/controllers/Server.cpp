@@ -56,6 +56,7 @@ void Server::run(void)
                 "(" + std::to_string(bytesRead) + " != " + std::to_string(sizeof(messageHeader)) + ", " +
                 std::string(strerror(errno)) + ")");
         }
+        // std::cerr << "SERVER RX << " << messageHeader << std::endl;
 
         if (messageHeader.payloadLength > receiveBufferMax)
         {
@@ -159,6 +160,7 @@ void Server::run(void)
 void Server::respondToClient(MessageType response, const ByteArray& payload)
 {
     auto messageHeader = MessageHeader(response, payload.size());
+    // std::cerr << "SERVER TX >> " << messageHeader << std::endl;
 
     auto bytesWritten = write(STDOUT_FILENO, &messageHeader, sizeof(messageHeader));
     if (bytesWritten != (ssize_t) sizeof(messageHeader))

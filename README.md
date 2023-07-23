@@ -28,6 +28,15 @@ Thus there is a risk for loosing data if the target volume was chosen incorrectl
 
 Do not use the "-s" switch manually, this switch is for internal use only!
 
+## Building instructions
+
+For simplicity build and install the Debian package as follows:
+
+```
+$ dpkg-buildpackage -b
+$ sudo dpkg -i ../vol-sync_*.deb
+```
+
 ## Usage
 
 vol-sync shall be used as following:

@@ -1,5 +1,11 @@
-vol-sync (0.0.1) UNRELEASED; urgency=medium
+vol-sync (0.1.0) jammy; urgency=medium
+
+  * First public release.
+
+ -- Felix Mellmann <flix@benfm.de>  Sun, 23 Jul 2023 15:11:18 +0200
+
+vol-sync (0.0.1) jammy; urgency=medium
 
   * Initial Release.
 
- -- Felix Mellmann <flix@benfm.de>  Sun, 23 Jul 2023 14:32:33 +0200
+ -- Felix Mellmann <flix@benfm.de>  Sun, 23 Jul 2023 15:10:49 +0200

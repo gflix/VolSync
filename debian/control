@@ -1,0 +1,23 @@
+Source: vol-sync
+Section: unknown
+Priority: optional
+Maintainer: Felix Mellmann <flix@benfm.de>
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               pkg-config,
+               libssl-dev (>= 1.1.1)
+Standards-Version: 4.6.0
+Homepage: https://github.com/gflix/VolSync
+Rules-Requires-Root: no
+
+Package: vol-sync
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Disk volume synchronization tool using ssh
+ vol-sync is a simple rsync like tool for disk volumes. A local disk volume
+ (either block device or image file) is pushed to a remote host through
+ a SSH tunnel. Only chunks which differ between source and target are
+ sent to the remote host to reduce effort and bandwidth requirements especially
+ when incrementally updating a volume or transferring sparsely filled
+ volumes.
+ The tool needs to be installed in the host and the remote side.

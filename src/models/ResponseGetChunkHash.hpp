@@ -9,7 +9,7 @@
 namespace VolSync
 {
 
-struct ResponseGetChunkHash
+struct __attribute__ ((packed)) ResponseGetChunkHash
 {
     explicit ResponseGetChunkHash(
         const ByteArray& md5Hash = ByteArray());

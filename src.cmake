@@ -23,6 +23,7 @@ set(
     src/models/ResponseGetChunkHash.cpp
     src/models/ResponseVersion.cpp
     src/models/ResponseVolumeInformation.cpp
+    src/utils/Blocking.cpp
     src/utils/ByteArray.cpp
     src/utils/Chunk.cpp
     src/utils/Md5.cpp

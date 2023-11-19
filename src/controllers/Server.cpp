@@ -9,6 +9,7 @@
 #include <models/RequestSetChunkIndex.hpp>
 #include <models/RequestSetChunkSize.hpp>
 #include <models/ResponseVersion.hpp>
+#include <utils/Blocking.hpp>
 #include <utils/ByteArray.hpp>
 #include <utils/Chunk.hpp>
 #include <utils/Md5.hpp>
@@ -33,6 +34,8 @@ void Server::run(void)
     FD_ZERO(&descriptors);
     FD_SET(STDIN_FILENO, &descriptors);
     timeval timeout { readTimeoutSecondsDefault, 0 };
+
+    Blocking::setBlocking(STDOUT_FILENO);
 
     int selectResult;
     bool quitLoop = false;

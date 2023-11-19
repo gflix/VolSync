@@ -7,6 +7,7 @@
 #include <controllers/Client.hpp>
 #include <models/MessageHeader.hpp>
 #include <models/RequestSetChunkSize.hpp>
+#include <utils/Blocking.hpp>
 #include <utils/Chunk.hpp>
 #include <utils/Md5.hpp>
 #include <utils/Volume.hpp>
@@ -20,6 +21,7 @@ Client::Child::Child(
     readDescriptor(readDescriptor),
     writeDescriptor(writeDescriptor)
 {
+    Blocking::setBlocking(writeDescriptor);
 }
 
 Client::Client(

@@ -101,6 +101,7 @@ void Client::run(void)
     setChunkSize(child, m_chunkSize);
 
     auto chunkCount = sourceVolumeInformation.size / m_chunkSize;
+    uint64_t lastStatusChunkIndex = 0;
     uint64_t updatedChunks = 0;
     timespec referenceTime;
     clock_gettime(CLOCK_MONOTONIC_COARSE, &referenceTime);
@@ -150,11 +151,37 @@ void Client::run(void)
                     (int) runtime % 60);
                 std::cout << "[" << buffer << "] ";
 
-                snprintf(buffer, sizeof(buffer), "%.1f", m_chunkIndex * 100.0 / chunkCount);
+                snprintf(buffer, sizeof(buffer), "%.2f", m_chunkIndex * 100.0 / chunkCount);
                 std::cout <<
                     "Progress: " << buffer << "% "
-                    "(" << m_chunkIndex << "/" << chunkCount << ", " << updatedChunks << " updated)" << std::endl;
+                    "(" << m_chunkIndex << "/" << chunkCount << ", " << updatedChunks << " updated, ";
 
+                auto transmittedChunks = m_chunkIndex - lastStatusChunkIndex;
+                if (transmittedChunks == 0)
+                {
+                    std::cout << "-- stalled --";
+                }
+                else
+                {
+                    auto transmissionSpeed = (transmittedChunks * m_chunkSize) / (now.tv_sec - referenceTime.tv_sec);
+                    if (transmissionSpeed >= (4 * 1024 * 1024))
+                    {
+                        snprintf(buffer, sizeof(buffer), "%.2f", transmissionSpeed / (1024.0 * 1024.0));
+                        std::cout << buffer << " MiB/s";
+                    }
+                    else if (transmissionSpeed >= (4 * 1024))
+                    {
+                        snprintf(buffer, sizeof(buffer), "%.2f", transmissionSpeed / 1024.0);
+                        std::cout << buffer << " KiB/s";
+                    }
+                    else
+                    {
+                        std::cout << transmissionSpeed << " Byte/s";
+                    }
+                }
+                std::cout << ")" << std::endl;
+
+                lastStatusChunkIndex = m_chunkIndex;
                 referenceTime = now;
             }
         }

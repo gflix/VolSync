@@ -150,7 +150,7 @@ void Client::run(void)
                     (int) runtime % 60);
                 std::cout << "[" << buffer << "] ";
 
-                snprintf(buffer, sizeof(buffer), "%.1f", m_chunkIndex * 100.0 / chunkCount);
+                snprintf(buffer, sizeof(buffer), "%.2f", m_chunkIndex * 100.0 / chunkCount);
                 std::cout <<
                     "Progress: " << buffer << "% "
                     "(" << m_chunkIndex << "/" << chunkCount << ", " << updatedChunks << " updated)" << std::endl;
